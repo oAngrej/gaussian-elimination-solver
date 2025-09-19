@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gaussian Elimination Solver</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" xintegrity="sha384-n8MVd4RsNIU0KOVEMcAXPayaHagZg+bXevCfv/TRi/eBmsKyUbSCFebNQuApCGAN" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" xintegrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0ZY0l8" crossorigin="anonymous"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --bg-primary: #ffffff; --bg-secondary: #f3f4f6; --text-primary: #111827;
+            --text-secondary: #4b5563; --accent-color: #4f46e5; --accent-text: #ffffff;
+            --border-color: #d1d5db; --input-bg: #ffffff;
+        }
+        html.dark {
+            --bg-primary: #111827; --bg-secondary: #1f2937; --text-primary: #f9fafb;
+            --text-secondary: #d1d5db; --accent-color: #6366f1; --accent-text: #ffffff;
+            --border-color: #4b5563; --input-bg: #374151;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .matrix-input {
+            font-family: 'Fira Code', monospace; background-color: var(--input-bg);
+            border: 1px solid var(--border-color); color: var(--text-primary);
+            transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+        }
+        .matrix-input:focus { outline: 2px solid var(--accent-color); border-color: var(--accent-color); }
+        .katex-display { margin: 0.5em 0; }
+        .step-card { background-color: var(--bg-secondary); border: 1px solid var(--border-color); }
+        .loader { border-top-color: var(--accent-color); }
+        #learn-section h3 { color: var(--accent-color); }
+        #learn-section code { background-color: var(--bg-secondary); color: var(--text-primary); border-radius: 4px; padding: 2px 6px; }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <div class="container mx-auto p-4 md:p-8 max-w-7xl">
+        <!-- Header -->
+        <header class="flex justify-between items-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold">Gaussian Elimination Calculator</h1>
+            <button id="theme-toggle" class="p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent-color" style="color: var(--text-primary); --ring-offset-color: var(--bg-primary);">
+                <svg id="theme-icon-light" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                <svg id="theme-icon-dark" class="w-6 h-6 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+            </button>
+        </header>
+
+        <main class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Input Section -->
+            <div class="bg-secondary p-6 rounded-lg" style="background-color: var(--bg-secondary);">
+                <h2 class="text-2xl font-semibold mb-4">1. Define Your System</h2>
+
+                <!-- Controls -->
+                <div class="flex flex-wrap items-center gap-4 mb-6">
+                    <div>
+                        <label for="matrix-size" class="block text-sm font-medium text-secondary" style="color: var(--text-secondary);">Variables (n):</label>
+                        <select id="matrix-size" class="mt-1 block w-24 p-2 border rounded-md shadow-sm matrix-input">
+                            <option>2</option>
+                            <option selected>3</option>
+                            <option>4</option>
+                            <option>5</option>
+                            <option>6</option>
+                        </select>
+                    </div>
+                     <div>
+                        <label for="input-type" class="block text-sm font-medium text-secondary" style="color: var(--text-secondary);">Input Method:</label>
+                        <select id="input-type" class="mt-1 block w-40 p-2 border rounded-md shadow-sm matrix-input">
+                            <option value="matrix" selected>Matrix Form</option>
+                            <option value="equation">Equation Form</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Matrix Input -->
+                <div id="matrix-input-container">
+                    <p class="mb-2 text-sm text-secondary" style="color: var(--text-secondary);">Enter coefficients for [A] and constants for [B]. Use arrow keys to navigate.</p>
+                    <div class="flex items-center gap-4">
+                         <div id="variable-names" class="flex flex-col items-center justify-around h-full py-2"></div>
+                        <div id="matrix-A" class="grid gap-2"></div>
+                        <div class="h-full border-l-2 border-dashed" style="border-color: var(--border-color);"></div>
+                        <div id="matrix-B" class="grid gap-2"></div>
+                    </div>
+                </div>
+
+                <!-- Equation Input -->
+                 <div id="equation-input-container" class="hidden">
+                    <p class="mb-2 text-sm text-secondary" style="color: var(--text-secondary);">Enter one equation per line. Use standard variables (x, y, z, etc.).</p>
+                    <textarea id="equation-input" rows="5" class="w-full p-2 rounded-md matrix-input" placeholder="Example:&#10;3*x + 2*y = 7&#10;x - y = 0"></textarea>
+                </div>
+                
+                <button id="solve-btn" class="w-full mt-6 py-3 px-4 text-lg font-semibold rounded-md shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2" style="background-color: var(--accent-color); color: var(--accent-text); --ring-offset-color: var(--bg-secondary);">
+                    Solve the System 
+                </button>
+            </div>
+
+            <!-- Solution Section -->
+            <div class="bg-secondary p-6 rounded-lg min-h-[300px]" style="background-color: var(--bg-secondary);">
+                <h2 class="text-2xl font-semibold mb-4">2. Step-by-Step Solution</h2>
+                <div id="solution-container">
+                    <p class="text-secondary" style="color: var(--text-secondary);">The solution process will appear here.</p>
+                </div>
+                 <div id="loader" class="hidden items-center justify-center mt-8">
+                    <div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-12 w-12 mb-4"></div>
+                </div>
+                <div id="final-solution" class="mt-6 text-xl font-bold"></div>
+            </div>
+        </main>
+        
+        <!-- Learn Section -->
+        <section id="learn-section" class="mt-12 bg-secondary p-6 rounded-lg" style="background-color: var(--bg-secondary);">
+            <details>
+                <summary class="text-2xl font-semibold cursor-pointer">Learn About Gaussian Elimination</summary>
+                <div class="mt-4 space-y-4 text-secondary leading-relaxed" style="color: var(--text-secondary);">
+                    <p>Gaussian Elimination is a powerful and systematic algorithm used in linear algebra to solve systems of linear equations. The core idea is to simplify a complex system of equations into a much easier form (called <strong>row echelon form</strong>) from which the solutions can be found by simple substitution.</p>
+                    
+                    <h3 class="text-xl font-semibold pt-2">The Core Process</h3>
+                    <ol class="list-decimal list-inside space-y-3">
+                        <li>
+                            <strong>Construct the Augmented Matrix:</strong> A system of equations is first converted into an "augmented matrix." This is a compact way to represent the system, where the coefficients of the variables form one part of the matrix (<code>A</code>) and the constants on the other side of the 'equals' sign form the final column (<code>B</code>). The matrix is written as <code>[A|B]</code>.
+                        </li>
+                        <li>
+                            <strong>Forward Elimination (Creating Row Echelon Form):</strong> The main goal is to introduce zeros below the main diagonal of the coefficient part of the matrix. This is achieved by applying a sequence of <strong>Elementary Row Operations</strong>:
+                            <ul class="list-disc list-inside ml-6 mt-2 space-y-1">
+                                <li><strong>Swapping:</strong> Exchanging the positions of two rows.</li>
+                                <li><strong>Scaling:</strong> Multiplying an entire row by a non-zero number.</li>
+                                <li><strong>Replacement:</strong> Adding a multiple of one row to another row. (This is the key operation for creating zeros).</li>
+                            </ul>
+                        </li>
+                        <li>
+                            <strong>Back Substitution (Finding the Solution):</strong> Once the matrix is in row echelon form, the last equation will have only one variable, making it easy to solve. You take this solution, substitute it into the second-to-last equation to find the next variable, and continue this process, working your way back to the top.
+                        </li>
+                    </ol>
+
+                    <h3 class="text-xl font-semibold pt-2">A Simple Example</h3>
+                    <p>Consider the system: <code>x + 2y = 5</code> and <code>3x + 4y = 11</code>. The augmented matrix is:</p>
+                    <div class="text-center text-lg" id="learn-example-1"></div>
+                    <p>To eliminate the <code>3</code> in the second row, we perform the row operation <code>R₂ → R₂ - 3*R₁</code>. This gives us the row echelon form:</p>
+                    <div class="text-center text-lg" id="learn-example-2"></div>
+                    <p>From the second row, we can now easily solve for <code>y</code>: <code>-2y = -4</code>, which means <code>y = 2</code>. Substituting this value back into the first equation (<code>x + 2(2) = 5</code>) gives us <code>x + 4 = 5</code>, so <code>x = 1</code>. The solution is (1, 2).</p>
+                </div>
+            </details>
+        </section>
+
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM Element References ---
+            const themeToggle = document.getElementById('theme-toggle');
+            const themeIconLight = document.getElementById('theme-icon-light');
+            const themeIconDark = document.getElementById('theme-icon-dark');
+            const sizeSelector = document.getElementById('matrix-size');
+            const inputTypeSelector = document.getElementById('input-type');
+            const matrixAContainer = document.getElementById('matrix-A');
+            const matrixBContainer = document.getElementById('matrix-B');
+            const variableNamesContainer = document.getElementById('variable-names');
+            const solveBtn = document.getElementById('solve-btn');
+            const solutionContainer = document.getElementById('solution-container');
+            const finalSolutionContainer = document.getElementById('final-solution');
+            const loader = document.getElementById('loader');
+            const matrixInputDiv = document.getElementById('matrix-input-container');
+            const equationInputDiv = document.getElementById('equation-input-container');
+            const equationTextarea = document.getElementById('equation-input');
+
+            // --- Theme Management ---
+            const applyTheme = (isDark) => {
+                if (isDark) {
+                    document.documentElement.classList.add('dark');
+                    themeIconLight.classList.add('hidden');
+                    themeIconDark.classList.remove('hidden');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                    themeIconLight.classList.remove('hidden');
+                    themeIconDark.classList.add('hidden');
+                }
+            };
+            
+            const isDarkMode = localStorage.getItem('darkMode') === 'true';
+            applyTheme(isDarkMode);
+
+            themeToggle.addEventListener('click', () => {
+                const isDark = document.documentElement.classList.toggle('dark');
+                localStorage.setItem('darkMode', isDark);
+                applyTheme(isDark);
+            });
+
+            // --- UI Generation ---
+            const createMatrix = () => {
+                const size = parseInt(sizeSelector.value);
+                matrixAContainer.innerHTML = '';
+                matrixBContainer.innerHTML = '';
+                variableNamesContainer.innerHTML = '';
+
+                matrixAContainer.style.gridTemplateColumns = `repeat(${size}, minmax(0, 1fr))`;
+                
+                for (let i = 0; i < size; i++) {
+                    const varInput = document.createElement('input');
+                    varInput.type = 'text';
+                    varInput.value = `x${i + 1}`;
+                    varInput.className = 'w-12 h-10 p-2 text-center rounded-md matrix-input mb-2';
+                    varInput.dataset.row = i;
+                    variableNamesContainer.appendChild(varInput);
+                    
+                    for (let j = 0; j < size; j++) {
+                        const input = document.createElement('input');
+                        input.type = 'text';
+                        input.className = 'w-12 h-10 text-center rounded-md matrix-input';
+                        input.dataset.row = i;
+                        input.dataset.col = j;
+                        matrixAContainer.appendChild(input);
+                    }
+                    const b_input = document.createElement('input');
+                    b_input.type = 'text';
+                    b_input.className = 'w-12 h-10 text-center rounded-md matrix-input';
+                    b_input.dataset.row = i;
+                    b_input.dataset.col = size; // Special col index for B matrix
+                    matrixBContainer.appendChild(b_input);
+                }
+            };
+            
+            const handleInputTypeChange = () => {
+                if (inputTypeSelector.value === 'matrix') {
+                    matrixInputDiv.classList.remove('hidden');
+                    equationInputDiv.classList.add('hidden');
+                    createMatrix();
+                } else {
+                    matrixInputDiv.classList.add('hidden');
+                    equationInputDiv.classList.remove('hidden');
+                }
+            };
+
+            // --- Event Listeners ---
+            sizeSelector.addEventListener('change', createMatrix);
+            inputTypeSelector.addEventListener('change', handleInputTypeChange);
+
+            document.getElementById('matrix-input-container').addEventListener('keydown', (e) => {
+                if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+                
+                e.preventDefault();
+                
+                const currentInput = e.target;
+                let { row, col } = currentInput.dataset;
+                row = parseInt(row);
+                col = parseInt(col);
+                
+                let nextRow = row, nextCol = col;
+                
+                if (e.key === 'ArrowUp') nextRow = Math.max(0, row - 1);
+                if (e.key === 'ArrowDown') nextRow = Math.min(parseInt(sizeSelector.value) - 1, row + 1);
+                if (e.key === 'ArrowLeft') nextCol = Math.max(0, col - 1);
+                if (e.key === 'ArrowRight') nextCol = Math.min(parseInt(sizeSelector.value), col + 1);
+                
+                const nextInput = document.querySelector(`[data-row='${nextRow}'][data-col='${nextCol}']`);
+                if (nextInput) {
+                    nextInput.focus();
+                    nextInput.select();
+                }
+            });
+            
+            solveBtn.addEventListener('click', async () => {
+                solutionContainer.innerHTML = '';
+                finalSolutionContainer.innerHTML = '';
+                loader.style.display = 'flex';
+                
+                let payload = { inputType: inputTypeSelector.value };
+
+                if (payload.inputType === 'matrix') {
+                    const size = parseInt(sizeSelector.value);
+                    const A = [];
+                    const B = [];
+                    const variableNames = [];
+                    let hasError = false;
+
+                    for(let i=0; i<size; i++) {
+                        const rowA = [];
+                        for(let j=0; j<size; j++) {
+                            const input = document.querySelector(`[data-row='${i}'][data-col='${j}']`);
+                            const val = input.value;
+                            if (val.trim() === '') {
+                                input.style.borderColor = 'red'; hasError = true;
+                            } else {
+                                input.style.borderColor = '';
+                            }
+                            rowA.push(val || '0');
+                        }
+                        A.push(rowA);
+
+                        const inputB = document.querySelector(`[data-row='${i}'][data-col='${size}']`);
+                        const valB = inputB.value;
+                         if (valB.trim() === '') {
+                            inputB.style.borderColor = 'red'; hasError = true;
+                        } else {
+                           inputB.style.borderColor = '';
+                        }
+                        B.push([valB || '0']);
+
+                        const varInput = document.querySelector(`#variable-names [data-row='${i}']`);
+                        variableNames.push(varInput.value);
+                    }
+                    
+                    if (hasError) {
+                        displayError("Input cannot be empty. Please enter numbers in all fields.");
+                        return;
+                    }
+                    payload.A = A;
+                    payload.B = B;
+                    payload.variableNames = variableNames;
+                } else {
+                    payload.equations = equationTextarea.value;
+                }
+
+
+                try {
+                    const response = await fetch('/solve', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (response.ok) {
+                        displaySolution(result);
+                    } else {
+                        displayError(result.error || "An unknown error occurred.");
+                    }
+                } catch(error) {
+                    displayError("Could not connect to the backend server. Make sure it's running.");
+                } finally {
+                    loader.style.display = 'none';
+                }
+            });
+
+            // --- Display Logic ---
+            const displayError = (message) => {
+                 loader.style.display = 'none';
+                 solutionContainer.innerHTML = `<div class="p-4 text-red-700 bg-red-100 dark:bg-red-900 dark:text-red-200 rounded-lg">${message}</div>`;
+            };
+
+            const formatMatrixToLatex = (matrix) => {
+                if (!matrix) return '';
+                // The backend now sends pre-formatted strings, including fractions
+                return `\\begin{bmatrix}${matrix.map(row => row.join(' & ')).join(' \\\\ ')}\\end{bmatrix}`;
+            };
+            
+            const displaySolution = (result) => {
+                let html = '';
+                result.steps.forEach(step => {
+                    html += `
+                        <div class="step-card p-4 rounded-lg mb-4">
+                            <p class="text-md font-medium text-secondary" style="color: var(--text-secondary);">${step.description}</p>`;
+                    if (step.matrix && !step.isError) {
+                         html += `<div class="katex-render text-lg">${formatMatrixToLatex(step.matrix)}</div>`;
+                    }
+                    html += `</div>`;
+                });
+                solutionContainer.innerHTML = html;
+                
+                document.querySelectorAll('.katex-render').forEach(el => {
+                    katex.render(el.textContent, el, {
+                        throwOnError: false,
+                        displayMode: true
+                    });
+                });
+
+                if (result.solution) {
+                    let solHtml = 'Final Solution: ';
+                    // The backend now sends strings, so no need for toFixed()
+                    solHtml += Object.entries(result.solution).map(([key, value]) => `(${key} = ${value}) `).join(', ');
+                    finalSolutionContainer.innerHTML = solHtml;
+                    // Render KaTeX for the final solution
+                    katex.render(finalSolutionContainer.innerHTML, finalSolutionContainer, { throwOnError: false });
+                }
+            };
+            
+            // --- Initial Setup ---
+            createMatrix();
+            // Render katex for learn section with corrected LaTeX
+            const example1Latex = "\\begin{bmatrix} 1 & 2 & | & 5 \\\\ 3 & 4 & | & 11 \\end{bmatrix}";
+            const example2Latex = "\\begin{bmatrix} 1 & 2 & | & 5 \\\\ 0 & -2 & | & -4 \\end{bmatrix}";
+            katex.render(example1Latex, document.getElementById('learn-example-1'), { throwOnError: false, displayMode: true });
+            katex.render(example2Latex, document.getElementById('learn-example-2'), { throwOnError: false, displayMode: true });
+
+        });
+    </script>
+
+</body>
+</html>
+
